@@ -18,6 +18,8 @@ func PrintText(deps *aws.EC2Dependencies) {
 		fmt.Printf("    - %s\n", sg)
 	}
 	fmt.Printf("  IAM Role: %s\n", deps.IAMRole)
+	fmt.Printf("  PublicIP %s\n",deps.PublicIP)
+
 }
 
 // PrintJSON prints the dependencies in JSON format

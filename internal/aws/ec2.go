@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/aws" // Add this import for aws.Config
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	_ "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
@@ -17,6 +17,7 @@ type EC2Dependencies struct {
 	SubnetID       string
 	SecurityGroups []string
 	IAMRole        string
+	PublicIP       string // This remains a string for simplicity
 }
 
 // GetEC2Dependencies fetches the dependencies of an EC2 instance
@@ -27,6 +28,7 @@ func GetEC2Dependencies(ctx context.Context, cfg aws.Config, instanceID string) 
 	resp, err := client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceID},
 	})
+	fmt.Println(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +46,15 @@ func GetEC2Dependencies(ctx context.Context, cfg aws.Config, instanceID string) 
 		VPCID:          *instance.VpcId,
 		SubnetID:       *instance.SubnetId,
 		SecurityGroups: make([]string, len(instance.SecurityGroups)),
+		IAMRole:        "None", // Default IAM role to "None"
+		PublicIP:       "None", // Default PublicIP to "None" if not present
 	}
+
+	// Check and set Public IP if it exists
+	// Added: Handle the case where PublicIpAddress is nil
+	if instance.PublicIpAddress != nil {
+		deps.PublicIP = *instance.PublicIpAddress // Dereference the pointer if not nil
+	} // Else, PublicIP remains "None" as initialized
 
 	// Populate security groups
 	for i, sg := range instance.SecurityGroups {
@@ -52,10 +62,9 @@ func GetEC2Dependencies(ctx context.Context, cfg aws.Config, instanceID string) 
 	}
 
 	// Fetch IAM role (if any)
+	// This part is already correct, just keeping it for completeness
 	if instance.IamInstanceProfile != nil && instance.IamInstanceProfile.Arn != nil {
 		deps.IAMRole = *instance.IamInstanceProfile.Arn
-	} else {
-		deps.IAMRole = "None"
 	}
 
 	return deps, nil
