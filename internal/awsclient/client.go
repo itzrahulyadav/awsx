@@ -79,12 +79,17 @@ func (c *Client) GetSecurityGroups(ctx context.Context, groupIDs []string) ([]ty
 }
 
 // GetNetworkACLs fetches NACL details
-func (c *Client) GetNetworkACLs(ctx context.Context, naclID string) ([]types.NetworkAcl, error) {
+func (c *Client) GetNetworkACLs(ctx context.Context, subnetID string) ([]types.NetworkAcl, error) {
 	resp, err := c.ec2Client.DescribeNetworkAcls(ctx, &ec2.DescribeNetworkAclsInput{
-		NetworkAclIds: []string{naclID},
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("association.subnet-id"),
+				Values: []string{subnetID},
+			},
+		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to describe NACL %s: %w", naclID, err)
+		return nil, err
 	}
 	return resp.NetworkAcls, nil
 }

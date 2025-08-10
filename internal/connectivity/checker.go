@@ -71,7 +71,7 @@ func resolveResource(client *awsclient.Client, ctx context.Context, resourceType
 		if *subnet.VpcId != vpcID {
 			return "", nil, fmt.Errorf("%s %s is not in VPC %s", resourceType, resourceID, vpcID)
 		}
-		return resourceID, nil, nil // Subnets don't have SGs
+		return resourceID, nil, nil 
 	}
 
 	eniID, err := client.GetNetworkInterfaceByResource(ctx, resourceType, resourceID)
@@ -122,7 +122,7 @@ func checkSecurityGroups(client *awsclient.Client, ctx context.Context, srcSGs, 
 
 	for _, sg := range sgs {
 		for _, rule := range sg.IpPermissions {
-			if rule.FromPort == 80 && rule.ToPort == 80 && util.ContainsProtocol(rule.IpProtocol, "tcp") {
+			if rule.FromPort != nil && rule.ToPort !=nil && *rule.FromPort == int32(80) && *rule.ToPort == int32(80) && util.ContainsProtocol(rule.IpProtocol, "tcp") {
 				for _, ipRange := range rule.IpRanges {
 					if ipRange.CidrIp != nil && strings.Contains(*ipRange.CidrIp, "0.0.0.0/0") {
 						return true // Allow traffic from any source
@@ -141,13 +141,14 @@ func checkSecurityGroups(client *awsclient.Client, ctx context.Context, srcSGs, 
 	return false
 }
 
+
 func checkNACLs(client *awsclient.Client, ctx context.Context, srcSubnetID, dstSubnetID string) bool {
 	// Get NACLs for destination subnet
-	dstSubnet, err := client.GetSubnetDetails(ctx, dstSubnetID)
-	if err != nil {
-		return false
-	}
-	nacls, err := client.GetNetworkACLs(ctx, *dstSubnet.NetworkAclId)
+	// dstSubnet, err := client.GetSubnetDetails(ctx, dstSubnetID)
+	// if err != nil {
+	// 	return false
+	// }
+	nacls, err := client.GetNetworkACLs(ctx, dstSubnetID)
 	if err != nil {
 		return false
 	}
@@ -155,9 +156,9 @@ func checkNACLs(client *awsclient.Client, ctx context.Context, srcSubnetID, dstS
 	for _, nacl := range nacls {
 		for _, entry := range nacl.Entries {
 			if entry.Egress != nil && !*entry.Egress && entry.RuleAction == types.RuleActionAllow {
-				if entry.Protocol == nil || *entry.Protocol == "-1" || *entry.Protocol == "6" { // All protocols or TCP
+				if entry.Protocol == nil || *entry.Protocol == "-1" || *entry.Protocol == "6" { 
 					if entry.CidrBlock != nil && strings.Contains(*entry.CidrBlock, "0.0.0.0/0") {
-						return true // Allow inbound traffic
+						return true 
 					}
 				}
 			}
